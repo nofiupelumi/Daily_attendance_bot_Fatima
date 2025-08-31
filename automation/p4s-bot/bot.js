@@ -7,7 +7,7 @@ dotenv.config();
 
 const program = new Command();
 program
-  .option('--action <action>', 'Action to run: login | logout | daily-log | dry-run', 'dry-run')
+  .option('--action <action>', 'Action to run: login | logout | daily-log | clock-in | clock-out | dry-run', 'dry-run')
   .parse(process.argv);
 
 const opts = program.opts();
@@ -15,6 +15,8 @@ const opts = program.opts();
 const BASE_URL = process.env.P4S_BASE_URL || 'https://portal4security.com';
 const EMAIL = process.env.P4S_EMAIL;
 const PASSWORD = process.env.P4S_PASSWORD;
+const LAT = parseFloat(process.env.P4S_LAT || '6.5244'); // Lagos
+const LON = parseFloat(process.env.P4S_LON || '3.3792');
 
 // Helpers
 function lagosTimeHM() {
@@ -78,6 +80,77 @@ async function logout(page) {
   await page.goto(`${BASE_URL}/logout`, { waitUntil: 'networkidle' });
 }
 
+async function submitAttendanceForm(page) {
+  // Ensure hidden lat/long are set (not required by validation, but good to include)
+  await page.evaluate((lat, lon) => {
+    const latEl = document.getElementById('lat'); if (latEl) latEl.value = String(lat);
+    const lonEl = document.getElementById('long'); if (lonEl) lonEl.value = String(lon);
+  }, LAT, LON);
+
+  // Try up to 3 times to align the HH:MM with the server-rendered readonly input
+  for (let i = 0; i < 3; i++) {
+    const val = await page.inputValue('#time').catch(() => '');
+    const expected = lagosTimeHM();
+    if (val === expected) {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle' }),
+        page.click('form#locationForm button[type="submit"]')
+      ]);
+      return;
+    }
+    // Refresh to get a fresh readonly time value
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('form#locationForm', { timeout: 5000 }).catch(() => {});
+  }
+
+  // Fallback: remove readonly and set to current Lagos time, then submit
+  await page.evaluate(() => {
+    const t = document.getElementById('time');
+    if (t) t.removeAttribute('readonly');
+  });
+  await page.fill('#time', lagosTimeHM());
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'networkidle' }),
+    page.click('form#locationForm button[type="submit"]')
+  ]);
+}
+
+async function clockIn(page) {
+  await page.goto(`${BASE_URL}/clock-in`, { waitUntil: 'domcontentloaded' });
+  // If already marked, there will be no form
+  const hasForm = await page.$('form#locationForm');
+  if (!hasForm) {
+    return; // Nothing to do
+  }
+  await submitAttendanceForm(page);
+
+  // Verify success
+  const ok = await page.locator('.alert.alert-success').first().textContent().catch(() => '');
+  if (!ok || !/Attendance marked successfully/i.test(ok)) {
+    const errText = await page.locator('.alert.alert-danger, .invalid-feedback').allTextContents().catch(() => []);
+    if (errText.length) throw new Error(`Clock-in may have failed: ${errText.join(' | ')}`);
+  }
+}
+
+async function clockOut(page) {
+  await page.goto(`${BASE_URL}/clock-out`, { waitUntil: 'domcontentloaded' });
+  // If message says "You have not clocked in today", just exit gracefully
+  const noEntry = await page.getByText('You have not clocked in today', { exact: false }).first().isVisible().catch(() => false);
+  if (noEntry) return;
+
+  const hasForm = await page.$('form#locationForm');
+  if (!hasForm) return;
+
+  await submitAttendanceForm(page);
+
+  // Verify success
+  const ok = await page.locator('.alert.alert-success').first().textContent().catch(() => '');
+  if (!ok || !/You have clocked out successfully/i.test(ok)) {
+    const errText = await page.locator('.alert.alert-danger, .invalid-feedback').allTextContents().catch(() => []);
+    if (errText.length) throw new Error(`Clock-out may have failed: ${errText.join(' | ')}`);
+  }
+}
+
 async function addDailyLog(page) {
   await page.goto(`${BASE_URL}/daily-activity-log`, { waitUntil: 'domcontentloaded' });
 
@@ -129,8 +202,17 @@ async function addDailyLog(page) {
   if (opts.action !== 'dry-run') assertEnv();
 
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    geolocation: { latitude: LAT, longitude: LON },
+    locale: 'en-GB',
+  });
+  // Allow geolocation for our origin
+  await context.grantPermissions(['geolocation'], { origin: BASE_URL });
   const page = await context.newPage();
+  // Auto-accept confirm/alert prompts (used by clock-in/out pages)
+  page.on('dialog', async (dialog) => {
+    try { await dialog.accept(); } catch {}
+  });
 
   try {
     switch (opts.action) {
@@ -140,6 +222,14 @@ async function addDailyLog(page) {
       case 'logout':
         await login(page);
         await logout(page);
+        break;
+      case 'clock-in':
+        await login(page);
+        await clockIn(page);
+        break;
+      case 'clock-out':
+        await login(page);
+        await clockOut(page);
         break;
       case 'daily-log':
         await login(page);

@@ -1,4 +1,4 @@
-name: Daily Logout (Mon/Tue/Wed/Fri at 18:00 Lagos)
+name: Daily Clock-Out (Mon/Tue/Wed/Fri at 18:00 Lagos)
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  logout:
+  clockout:
     runs-on: ubuntu-latest
     env:
       P4S_EMAIL: ${{ secrets.P4S_EMAIL }}
@@ -28,13 +28,13 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
-      - name: Submit daily log before logout
+      - name: Submit daily log before clock-out
         working-directory: automation/p4s-bot
         env:
           # Default comment and randomized report are handled in code. Optional overrides shown below.
           DAILY_LOG_COMMENT: 'AI update & Code improvement'
         run: node bot.js --action daily-log
 
-      - name: Run logout bot
+      - name: Run clock-out bot
         working-directory: automation/p4s-bot
-        run: node bot.js --action logout
+        run: node bot.js --action clock-out

@@ -1,4 +1,4 @@
-name: Daily Login (Mon/Tue/Wed/Fri at 08:00 Lagos)
+name: Daily Clock-In (Mon/Tue/Wed/Fri at 08:00 Lagos)
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  login:
+  clockin:
     runs-on: ubuntu-latest
     env:
       P4S_EMAIL: ${{ secrets.P4S_EMAIL }}
@@ -28,6 +28,6 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
-      - name: Run login bot
+      - name: Run clock-in bot
         working-directory: automation/p4s-bot
-        run: node bot.js --action login
+        run: node bot.js --action clock-in
