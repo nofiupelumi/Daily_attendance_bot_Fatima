@@ -1,0 +1,51 @@
+name: Manual Daily Log
+
+on:
+  workflow_dispatch:
+    inputs:
+      daily_log_time:
+        description: 'Time (HH:MM) Africa/Lagos'
+        required: false
+      daily_log_activity:
+        description: 'Activity Done'
+        required: false
+      daily_log_comment:
+        description: 'Comment'
+        required: false
+      daily_log_report:
+        description: 'Report (plain text)'
+        required: true
+      officer_name:
+        description: 'Officer Name (optional)'
+        required: false
+
+jobs:
+  dailyLog:
+    runs-on: ubuntu-latest
+    env:
+      P4S_EMAIL: ${{ secrets.P4S_EMAIL }}
+      P4S_PASSWORD: ${{ secrets.P4S_PASSWORD }}
+      P4S_BASE_URL: ${{ secrets.P4S_BASE_URL }}
+      DAILY_LOG_TIME: ${{ inputs.daily_log_time }}
+      DAILY_LOG_ACTIVITY: ${{ inputs.daily_log_activity }}
+      DAILY_LOG_COMMENT: ${{ inputs.daily_log_comment }}
+      DAILY_LOG_REPORT: ${{ inputs.daily_log_report }}
+      OFFICER_NAME: ${{ inputs.officer_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install bot deps
+        working-directory: automation/p4s-bot
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run daily log bot
+        working-directory: automation/p4s-bot
+        run: node bot.js --action daily-log

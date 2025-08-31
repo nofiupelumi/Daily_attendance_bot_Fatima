@@ -1,0 +1,33 @@
+name: Daily Login (Mon/Tue/Wed/Fri at 08:00 Lagos)
+
+on:
+  schedule:
+    # 07:00 UTC = 08:00 Africa/Lagos
+    - cron: '0 7 * * 1,2,3,5'
+  workflow_dispatch: {}
+
+jobs:
+  login:
+    runs-on: ubuntu-latest
+    env:
+      P4S_EMAIL: ${{ secrets.P4S_EMAIL }}
+      P4S_PASSWORD: ${{ secrets.P4S_PASSWORD }}
+      P4S_BASE_URL: ${{ secrets.P4S_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install bot deps
+        working-directory: automation/p4s-bot
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run login bot
+        working-directory: automation/p4s-bot
+        run: node bot.js --action login

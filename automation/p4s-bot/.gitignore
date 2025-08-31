@@ -1,0 +1,3 @@
+node_modules/
+*.log
+automation_error_*.png
