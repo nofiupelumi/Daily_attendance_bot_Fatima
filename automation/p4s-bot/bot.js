@@ -17,6 +17,8 @@ const EMAIL = process.env.P4S_EMAIL;
 const PASSWORD = process.env.P4S_PASSWORD;
 const LAT = parseFloat(process.env.P4S_LAT || '6.5244'); // Lagos
 const LON = parseFloat(process.env.P4S_LON || '3.3792');
+const DESKTOP_UA = process.env.P4S_UA ||
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
 // Helpers
 function lagosTimeHM() {
@@ -214,6 +216,8 @@ async function addDailyLog(page) {
   const context = await browser.newContext({
     geolocation: { latitude: LAT, longitude: LON },
     locale: 'en-GB',
+    userAgent: DESKTOP_UA,
+    viewport: { width: 1366, height: 768 },
   });
   // Allow geolocation for our origin
   await context.grantPermissions(['geolocation'], { origin: BASE_URL });

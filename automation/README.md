@@ -12,6 +12,7 @@ All actions target the live site at https://portal4security.com. No credentials 
 - P4S_PASSWORD: Your login password
 - (Optional) P4S_BASE_URL: Defaults to https://portal4security.com
 - (Optional) P4S_LAT and P4S_LON: Geolocation to use (defaults to Lagos coordinates)
+- (Optional) P4S_UA: User-Agent string (defaults to a Desktop Chrome UA)
 - (Optional for daily log) DAILY_LOG_TIME in HH:MM (Africa/Lagos), DAILY_LOG_ACTIVITY, DAILY_LOG_COMMENT, DAILY_LOG_REPORT, OFFICER_NAME
 
 ## Local run (optional)
