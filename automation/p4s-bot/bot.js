@@ -82,10 +82,10 @@ async function logout(page) {
 
 async function submitAttendanceForm(page) {
   // Ensure hidden lat/long are set (not required by validation, but good to include)
-  await page.evaluate((lat, lon) => {
+  await page.evaluate(({ lat, lon }) => {
     const latEl = document.getElementById('lat'); if (latEl) latEl.value = String(lat);
     const lonEl = document.getElementById('long'); if (lonEl) lonEl.value = String(lon);
-  }, LAT, LON);
+  }, { lat: LAT, lon: LON });
 
   // Try up to 3 times to align the HH:MM with the server-rendered readonly input
   for (let i = 0; i < 3; i++) {
@@ -95,7 +95,11 @@ async function submitAttendanceForm(page) {
     if (val === expected) {
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle' }),
-        page.click('form#locationForm button[type="submit"]')
+        (async () => {
+          const btn = page.locator('form#locationForm button[type="submit"]');
+          await btn.scrollIntoViewIfNeeded().catch(() => {});
+          await btn.click();
+        })()
       ]);
       return;
     }
@@ -112,7 +116,11 @@ async function submitAttendanceForm(page) {
   await page.fill('#time', lagosTimeHM());
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'networkidle' }),
-    page.click('form#locationForm button[type="submit"]')
+    (async () => {
+      const btn = page.locator('form#locationForm button[type="submit"]');
+      await btn.scrollIntoViewIfNeeded().catch(() => {});
+      await btn.click();
+    })()
   ]);
 }
 
