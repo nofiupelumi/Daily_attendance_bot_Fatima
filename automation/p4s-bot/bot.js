@@ -89,8 +89,9 @@ async function submitAttendanceForm(page) {
 
   // Try up to 3 times to align the HH:MM with the server-rendered readonly input
   for (let i = 0; i < 3; i++) {
-    const val = await page.inputValue('#time').catch(() => '');
-    const expected = lagosTimeHM();
+  const val = await page.inputValue('#time').catch(() => '');
+  const expected = lagosTimeHM();
+  console.log(`[clock] Attempt ${i+1} | form #time=${val} | lagos now=${expected}`);
     if (val === expected) {
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle' }),

@@ -28,6 +28,18 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
+      - name: Print current Africa/Lagos time
+        run: |
+          sudo apt-get update && sudo apt-get install -y tzdata >/dev/null 2>&1
+          TZ=Africa/Lagos date '+%Y-%m-%d %H:%M:%S %Z'
+
       - name: Run clock-in bot
         working-directory: automation/p4s-bot
         run: node bot.js --action clock-in
+      - name: Upload debug artifacts (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p4s-artifacts-clockin
+          path: automation/p4s-bot/*.png
+          if-no-files-found: ignore
