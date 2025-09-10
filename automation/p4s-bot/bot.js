@@ -35,11 +35,11 @@ function lagosTimeHM() {
 
 // Daily log defaults and inputs
 const DAILY_LOG_CHOICES = [
-  'Laravel LMS development continues',
-  'Scrapers Libraries updated',
-  'Automation update for TAT',
-  'Model fine tuning',
-  'General development update',
+  'Meeting and Laravel LMS Course development',
+  'NRI website review',
+  'sevearal meetings and Formatting of proposal document',
+  'Following up with Lms pending task with NRI',
+  'Several Meeting and General development update',
 ];
 
 const DAILY_LOG_TIME = process.env.DAILY_LOG_TIME || lagosTimeHM();
