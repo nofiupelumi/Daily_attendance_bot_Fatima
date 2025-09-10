@@ -37,7 +37,7 @@ jobs:
         working-directory: automation/p4s-bot
         env:
           # Default comment and randomized report are handled in code. Optional overrides shown below.
-          DAILY_LOG_COMMENT: 'AI update & Code improvement'
+          DAILY_LOG_COMMENT: 'Meetings,LMS,and NRI Development'
         run: node bot.js --action daily-log
 
       - name: Run clock-out bot
