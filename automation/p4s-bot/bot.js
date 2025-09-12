@@ -55,11 +55,31 @@ function assertEnv() {
 }
 
 async function login(page) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+  // Retry navigation up to 3 times with increased timeout
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[login] Attempt ${attempt}/3: Navigating to login page...`);
+      await page.goto(`${BASE_URL}/login`, { 
+        waitUntil: 'domcontentloaded', 
+        timeout: 60000 // Increase timeout to 60 seconds
+      });
+      break; // Success, exit retry loop
+    } catch (error) {
+      lastError = error;
+      console.log(`[login] Attempt ${attempt}/3 failed: ${error.message}`);
+      if (attempt === 3) {
+        throw new Error(`Failed to load login page after 3 attempts. Last error: ${error.message}`);
+      }
+      // Wait before retrying
+      await page.waitForTimeout(2000);
+    }
+  }
+
   await page.fill('#email', EMAIL);
   await page.fill('#password', PASSWORD);
   await Promise.all([
-    page.waitForNavigation({ waitUntil: 'networkidle' }),
+    page.waitForNavigation({ waitUntil: 'networkidle', timeout: 60000 }),
     page.click('button[type="submit"]')
   ]);
 
@@ -79,7 +99,7 @@ async function login(page) {
 
 async function logout(page) {
   // App defines GET or POST /logout via AuthController::__invoke
-  await page.goto(`${BASE_URL}/logout`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/logout`, { waitUntil: 'networkidle', timeout: 60000 });
 }
 
 async function submitAttendanceForm(page) {
@@ -96,7 +116,7 @@ async function submitAttendanceForm(page) {
   console.log(`[clock] Attempt ${i+1} | form #time=${val} | lagos now=${expected}`);
     if (val === expected) {
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle' }),
+        page.waitForNavigation({ waitUntil: 'networkidle', timeout: 60000 }),
         (async () => {
           const btn = page.locator('form#locationForm button[type="submit"]');
           await btn.scrollIntoViewIfNeeded().catch(() => {});
@@ -106,8 +126,8 @@ async function submitAttendanceForm(page) {
       return;
     }
     // Refresh to get a fresh readonly time value
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('form#locationForm', { timeout: 5000 }).catch(() => {});
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('form#locationForm', { timeout: 10000 }).catch(() => {});
   }
 
   // Fallback: remove readonly and set to current Lagos time, then submit
@@ -117,7 +137,7 @@ async function submitAttendanceForm(page) {
   });
   await page.fill('#time', lagosTimeHM());
   await Promise.all([
-    page.waitForNavigation({ waitUntil: 'networkidle' }),
+    page.waitForNavigation({ waitUntil: 'networkidle', timeout: 60000 }),
     (async () => {
       const btn = page.locator('form#locationForm button[type="submit"]');
       await btn.scrollIntoViewIfNeeded().catch(() => {});
@@ -127,7 +147,7 @@ async function submitAttendanceForm(page) {
 }
 
 async function clockIn(page) {
-  await page.goto(`${BASE_URL}/clock-in`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE_URL}/clock-in`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   // If already marked, there will be no form
   const hasForm = await page.$('form#locationForm');
   if (!hasForm) {
@@ -144,7 +164,7 @@ async function clockIn(page) {
 }
 
 async function clockOut(page) {
-  await page.goto(`${BASE_URL}/clock-out`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE_URL}/clock-out`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   // If message says "You have not clocked in today", just exit gracefully
   const noEntry = await page.getByText('You have not clocked in today', { exact: false }).first().isVisible().catch(() => false);
   if (noEntry) return;
@@ -163,7 +183,7 @@ async function clockOut(page) {
 }
 
 async function addDailyLog(page) {
-  await page.goto(`${BASE_URL}/daily-activity-log`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE_URL}/daily-activity-log`, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
   // In case TinyMCE is used, we still can set the underlying textarea value.
   await page.fill('input#time', DAILY_LOG_TIME);
@@ -194,7 +214,7 @@ async function addDailyLog(page) {
   }
 
   await Promise.all([
-    page.waitForNavigation({ waitUntil: 'networkidle' }),
+    page.waitForNavigation({ waitUntil: 'networkidle', timeout: 60000 }),
     page.click('button[type="submit"]')
   ]);
 
@@ -219,6 +239,8 @@ async function addDailyLog(page) {
     userAgent: DESKTOP_UA,
     viewport: { width: 1366, height: 768 },
   });
+  // Set default timeout for all page operations
+  context.setDefaultTimeout(60000);
   // Allow geolocation for our origin
   await context.grantPermissions(['geolocation'], { origin: BASE_URL });
   const page = await context.newPage();
@@ -258,8 +280,21 @@ async function addDailyLog(page) {
     await browser.close();
     process.exit(0);
   } catch (err) {
-    console.error(`[ERROR] ${err.message}`);
-    await page.screenshot({ path: `automation_error_${Date.now()}.png`, fullPage: true }).catch(() => {});
+    console.error(`[ERROR] Action '${opts.action}' failed: ${err.message}`);
+    console.error(`[DEBUG] Stack trace:`, err.stack);
+    
+    // Take screenshot for debugging
+    try {
+      const timestamp = Date.now();
+      await page.screenshot({ 
+        path: `automation_error_${timestamp}.png`, 
+        fullPage: true 
+      });
+      console.log(`[DEBUG] Screenshot saved as automation_error_${timestamp}.png`);
+    } catch (screenshotErr) {
+      console.error(`[DEBUG] Failed to take screenshot: ${screenshotErr.message}`);
+    }
+    
     await browser.close();
     process.exit(1);
   }
