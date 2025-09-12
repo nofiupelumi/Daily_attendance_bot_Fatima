@@ -232,7 +232,10 @@ async function addDailyLog(page) {
 (async () => {
   if (opts.action !== 'dry-run') assertEnv();
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ 
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined
+  });
   const context = await browser.newContext({
     geolocation: { latitude: LAT, longitude: LON },
     locale: 'en-GB',
