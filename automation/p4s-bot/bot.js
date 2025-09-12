@@ -44,7 +44,7 @@ const DAILY_LOG_CHOICES = [
 
 const DAILY_LOG_TIME = process.env.DAILY_LOG_TIME || lagosTimeHM();
 const DAILY_LOG_ACTIVITY = process.env.DAILY_LOG_ACTIVITY || 'Routine duties';
-const DAILY_LOG_COMMENT = process.env.DAILY_LOG_COMMENT || 'AI update & Code improvement';
+const DAILY_LOG_COMMENT = process.env.DAILY_LOG_COMMENT || 'Meetings,LMS,and NRI Updates';
 const DAILY_LOG_REPORT = process.env.DAILY_LOG_REPORT || DAILY_LOG_CHOICES[Math.floor(Math.random() * DAILY_LOG_CHOICES.length)];
 const OFFICER_NAME = process.env.OFFICER_NAME || '';
 
